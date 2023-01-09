@@ -16,3 +16,11 @@ ATABASE_PASSWORD=password
 DATABASE=mongodb+srv://projectname:password@cluster0.yxito1x.mongodb.net/?retryWrites=true&w=majority
 ```
 Create a database, for this project Mongodb was used. -> https://www.mongodb.com/
+
+# Then go to variables and change
+CARDANO_NETWORK_TYPE
+```
+--testnet-magic 1097911063
+--mainnet
+```
+CARDANO_ERA to the current era. -> https://docs.cardano.org/cardano-testnet/getting-started
