@@ -1,0 +1,20 @@
+{
+    "721": {
+        "665d17da6e374fd483fc952dbb0485f01da7b1d5d68374b57abb0ab3": {
+            "Fatduck22": {
+                "name": "Fatduck #22",
+                "body": "green",
+                "skin": "none",
+                "head": "icecream",
+                "lhand": "flower",
+                "rhand": "corndog",
+                "image": [
+                    "ipfs://",
+                    "bafybeihbndmmach3s7anf5gzeicjcwte4hj6p3z6xztbnbym6tkt7on774"
+                ],
+                "website": "https://www.example.com",
+                "creator": "TD & LN"
+            }
+        }
+    }
+}

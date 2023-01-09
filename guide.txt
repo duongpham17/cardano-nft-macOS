@@ -1,0 +1,156 @@
+// > Generate a protocol.json for testnet
+
+cardano-cli query protocol-parameters \
+--testnet-magic 1097911063 \
+--out-file protocol.json
+
+// > Generate a protocol.json for mainnet
+
+cardano-cli query protocol-parameters \
+--mainnet \
+--out-file protocol.json
+
+/***************************************************************/
+
+// > Generate Payment key-pair (cardano-cli) | payment.skey private signing - dont show anyone | payment.vkey public signing
+
+cardano-cli address key-gen \
+--verification-key-file payment.vkey \
+--signing-key-file payment.skey
+
+// > Generate Wallet address with key-pair (cardano-cli) | --testnet-magic for testnet | --mainnet
+
+cardano-cli address build \
+--payment-verification-key-file payment.vkey \
+--out-file payment.addr \
+--testnet-magic 1097911063
+
+// > check 
+
+cardano-cli query utxo \
+--address YOUR_CARDANO_ADDRESS \
+--testnet-magic 1097911063
+
+/***************************************************************/
+
+// > Create transaction to send a specific amount (NOT ALL ADA)
+
+// build a raw draft transaction 
+
+cardano-cli transaction build-raw \
+--tx-in txhash#txid \
+--tx-out to_address+0 \
+--tx-out from_address+0 \
+--fee 0 \
+--out-file tx.draft
+
+// calculate min fees
+
+cardano-cli transaction calculate-min-fee \
+--tx-body-file tx.draft \
+--tx-in-count 1 \
+--tx-out-count 2 \
+--witness-count 1 \
+--testnet-magic 1097911063 \
+--protocol-params-file src/protocol.json
+
+// build real transaction
+
+cardano-cli transaction build-raw \
+--tx-in txhash#txid \
+--tx-out to_address+amount \
+--tx-out from_address+amount-lovelace \
+--fee 175577 \
+--out-file tx.draft
+
+// prove we are the owner and sign transaction
+
+cardano-cli transaction sign \
+--tx-body-file tx.draft \
+--signing-key-file src/keys/payment.skey  \
+--testnet-magic 1097911063 \
+--out-file tx.signed
+
+// submit transaction
+
+cardano-cli transaction submit \
+--tx-file tx.signed \
+--testnet-magic 1097911063 
+
+/***************************************************************/
+
+// > Create transaction to send all ada
+
+// build a raw draft transaction 
+
+cardano-cli transaction build-raw \
+--tx-in txhash#txid \
+--tx-out to_address+0 \
+--fee 0 \
+--out-file tx.draft
+
+// calculate min fees
+
+cardano-cli transaction calculate-min-fee \
+--tx-body-file tx.draft \
+--tx-in-count 1 \
+--tx-out-count 1 \
+--witness-count 1 \
+--testnet-magic 1097911063 \
+--protocol-params-file src/protocol.json
+
+// build real transaction
+
+cardano-cli transaction build-raw \
+--tx-in txhash#txid \
+--tx-out to_address+amount-fees \
+--fee 175577 \
+--out-file tx.draft
+
+// prove we are the owner and sign transaction
+
+cardano-cli transaction sign \
+--tx-body-file tx.draft \
+--signing-key-file src/keys/payment.skey  \
+--testnet-magic 1097911063 \
+--out-file tx.signed
+
+// submit
+
+cardano-cli transaction submit \
+--tx-file tx.signed \
+--testnet-magic 1097911063 
+
+/***************************************************************/
+
+// > testing place
+
+cardano-cli transaction build-raw \
+--tx-in ccc7fd05284b4fead902877b9fcdc59b1f45e43a91d5fb56a7525495a2b3c6a2#1 \
+--tx-out addr_test1qz2m6unxmyye00t6eh3swf60yxa3mgnhrk4rt0csdreuwhdg5e62j6zj6wglh00mxw899zcnj29cdd36muntc8zrkheqvpu3yf+0 \
+--fee 0 \
+--out-file tx/tx.draft
+
+cardano-cli transaction calculate-min-fee \
+--tx-body-file tx.draft \
+--tx-in-count 1 \
+--tx-out-count 1 \
+--witness-count 1 \
+--testnet-magic 1097911063 \
+--protocol-params-file keys/protocol.json
+
+cardano-cli transaction build-raw \
+--tx-in ccc7fd05284b4fead902877b9fcdc59b1f45e43a91d5fb56a7525495a2b3c6a2#1 \
+--tx-out addr_test1qz2m6unxmyye00t6eh3swf60yxa3mgnhrk4rt0csdreuwhdg5e62j6zj6wglh00mxw899zcnj29cdd36muntc8zrkheqvpu3yf+49653158 \
+--fee 171265 \
+--out-file tx/tx.draft
+
+cardano-cli transaction sign \
+--tx-body-file tx/tx.draft \
+--signing-key-file keys/payment.skey  \
+--testnet-magic 1097911063 \
+--out-file tx/tx.signed
+
+cardano-cli transaction submit \
+--tx-file tx/tx.signed \
+--testnet-magic 1097911063 
