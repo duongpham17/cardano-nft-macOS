@@ -1,4 +1,10 @@
 # IMPORTANT 
+
+Install the required modules first.
+```
+npm install
+```
+
 Create a config.env file and add these variables.
 
 ```
