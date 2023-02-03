@@ -9,8 +9,6 @@ const buildRawTx = (data: IMetadata): void => {
 
   const [slot_number, policy_id] = [get_slot_number(), get_policy_id() ];
 
-  console.log(slot_number, policy_id);
-
   const {utxo, txid, sender_address, hashed_token_name} = data;
 
   cmd.runSync([
@@ -38,7 +36,7 @@ const calcMinimumFee = (): number => {
 
   const [minimum_lovelace_fee] = calculated_min_fee.data.split(" ");
 
-  const minimum_utxo_lovelace_required = 3000000;
+  const minimum_utxo_lovelace_required = 2000000;
 
   const minimum_lovelace = Number(minimum_lovelace_fee) + Number(minimum_utxo_lovelace_required);
 
