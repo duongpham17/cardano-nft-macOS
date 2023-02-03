@@ -19,7 +19,7 @@ Go to this link and create an api key. -> https://blockfrost.io/
 
 ```
 DATABASE_PASSWORD=password
-DATABASE=mongodb+srv://projectname:password@cluster0.yxito1x.mongodb.net/?retryWrites=true&w=majority
+DATABASE=mongodb+srv://projectname:<password>@cluster0.yxito1x.mongodb.net/?retryWrites=true&w=majority
 ```
 Create a database, for this project Mongodb was used. -> https://www.mongodb.com/
 
