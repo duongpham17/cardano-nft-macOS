@@ -21,10 +21,12 @@ import { on_refund }   from './payment_refund'; // Run after setup has been invo
     You can see the nfts metadata get minted by going to _nft/metadata and _/nft/nft
 */
 
-database();
+// mintImagesAndMetadata
 
-on_payments();
+// database();
 
-on_mint_nft();
+// on_payments();
 
-on_refund();
+// on_mint_nft();
+
+// on_refund();
