@@ -23,10 +23,6 @@ DATABASE=mongodb+srv://projectname:password@cluster0.yxito1x.mongodb.net/?retryW
 ```
 Create a database, for this project Mongodb was used. -> https://www.mongodb.com/
 
-# Then go to variables and change
-CARDANO_NETWORK_TYPE
-```
---testnet-magic 1097911063
---mainnet
-```
-CARDANO_ERA to the current era. -> https://docs.cardano.org/cardano-testnet/getting-started
+# Then go to variables and change the project information
+
+# Then navigate to index.ts and follow the steps

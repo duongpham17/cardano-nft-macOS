@@ -1,25 +1,32 @@
-import { CARDANO_CLI_PATH, CARDANO_NETWORK_TYPE, CARDANO_ERA, POLICY_ID, SLOT_NUMBER, SEND_CHANGE_TO_ADDRESS } from '../variables';
-import { MetadataDocument } from '../_model/metadata';
-import { metadataFind, metadataUpdate } from '../_utils/controller';
+import { CARDANO_CLI, CARDANO_ERA, SEND_CHANGE_TO_ADDRESS, CARDANO_NETWORK_TYPE, get_policy_id, get_slot_number} from '../variables';
+import { IMetadata } from '../_model/metadata';
+import { metadataFind, metadataUpdate } from '../_controller';
 
 const cmd: any = require("node-cmd");
 const _account = './_account';
 
-const buildRawTx = (data: MetadataDocument): void => {
+const buildRawTx = (data: IMetadata): void => {
+
+  const [slot_number, policy_id] = [get_slot_number(), get_policy_id() ];
+
+  console.log(slot_number, policy_id);
+
   const {utxo, txid, sender_address, hashed_token_name} = data;
+
   cmd.runSync([
-    CARDANO_CLI_PATH,
+    CARDANO_CLI,
     "transaction build-raw",
     `--tx-in ${utxo}#${txid}`,
-    `--tx-out ${sender_address}+0+"1 ${POLICY_ID}.${hashed_token_name}"`,
+    `--tx-out ${sender_address}+0+"1 ${policy_id}.${hashed_token_name}"`,
     `--fee 0`,
+    `--invalid-hereafter ${slot_number}`,
     `--out-file ${_account}/tx/matx.raw`
   ].join(" "));
 };
 
 const calcMinimumFee = (): number => {
   const calculated_min_fee = cmd.runSync([
-    CARDANO_CLI_PATH,
+    CARDANO_CLI,
     "transaction calculate-min-fee",
     `--tx-body-file ${_account}/tx/matx.raw`,
     `--tx-in-count 1`,
@@ -31,27 +38,29 @@ const calcMinimumFee = (): number => {
 
   const [minimum_lovelace_fee] = calculated_min_fee.data.split(" ");
 
-  const minimum_utxo_lovelace_required = 1400000;
+  const minimum_utxo_lovelace_required = 3000000;
 
   const minimum_lovelace = Number(minimum_lovelace_fee) + Number(minimum_utxo_lovelace_required);
 
   return minimum_lovelace;
 };
 
-const buildRealTx = (data: MetadataDocument, minimum_lovelace: number): void => {
+const buildRealTx = (data: IMetadata, minimum_lovelace: number): void => {
+  const [slot_number, policy_id] = [get_slot_number(), get_policy_id() ];
+
   const {utxo, txid, sender_address, hashed_token_name, metadata_pathname} = data;
+
   cmd.runSync([
-    CARDANO_CLI_PATH,
-    "transaction build",
+    `${CARDANO_CLI} transaction build`,
     CARDANO_NETWORK_TYPE,
     CARDANO_ERA,
     `--tx-in ${utxo}#${txid}`,
-    `--tx-out ${sender_address}+${minimum_lovelace}+"1 ${POLICY_ID}.${hashed_token_name}"`,
+    `--tx-out ${sender_address}+${minimum_lovelace}+"1 ${policy_id}.${hashed_token_name}"`,
     `--change-address ${SEND_CHANGE_TO_ADDRESS}`,
-    `--mint="1 ${POLICY_ID}.${hashed_token_name}"`,
+    `--mint="1 ${policy_id}.${hashed_token_name}"`,
     `--minting-script-file ${_account}/policy/policy.script`,
     `--metadata-json-file ./_nft/metadata/${metadata_pathname}`,
-    `--invalid-hereafter ${SLOT_NUMBER}`,
+    `--invalid-hereafter ${slot_number}`,
     `--witness-override 2`,
     `--out-file ${_account}/tx/matx.raw`
   ].join(" "));
@@ -59,25 +68,19 @@ const buildRealTx = (data: MetadataDocument, minimum_lovelace: number): void => 
 
 const signTx = (): void => {
   cmd.runSync([
-    CARDANO_CLI_PATH,
-    "transaction sign",
+    `${CARDANO_CLI} transaction sign`,
     `--signing-key-file ${_account}/keys/payment.skey `,
     `--signing-key-file ${_account}/policy/policy.skey `,
-    CARDANO_NETWORK_TYPE,
-    `--tx-body-file ${_account}/tx/matx.raw`,
+    `${CARDANO_NETWORK_TYPE} --tx-body-file ${_account}/tx/matx.raw`,
     `--out-file ${_account}/tx/matx.signed`
   ].join(" "));
 };
 
 const submit = async (): Promise<boolean> => {
   let status: boolean = false;
-  
   try{
     const response = await cmd.runSync([
-      CARDANO_CLI_PATH,
-      "transaction submit",
-      `--tx-file ${_account}/tx/matx.signed`,
-      CARDANO_NETWORK_TYPE
+      `${CARDANO_CLI} transaction submit --tx-file ${_account}/tx/matx.signed ${CARDANO_NETWORK_TYPE}`
     ].join(" "));
     if(response.data.includes("success")) status = true;
   } catch(err){
@@ -109,18 +112,17 @@ const mint_nft = async () => {
 
     signTx();
 
-    const status = submit();
+    const status = await submit();
 
     if(!status) continue;
+    
+    await metadataUpdate(data._id, {status: "minted"});
 
-    data.status = "minted";
-    await metadataUpdate(data._id, data);
-    console.log(`${data.metadata_pathname} sent to: ${data.sender_address}`)
+    console.log("------------------------------------------------------------------------")
+    console.log(`> ${data.metadata_pathname} sent to: \n${data.sender_address}`)
+    console.log("------------------------------------------------------------------------")
   };
 
 }
 
-
-setInterval(async () => {
-  await mint_nft()
-}, 30000);
+export const on_mint_nft = () => setInterval(async () => await mint_nft(), 10000);

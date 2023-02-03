@@ -1,6 +1,7 @@
-import mongoose from 'mongoose';
+import {Schema, model, Document} from 'mongoose';
 
-export interface MetadataInput {
+export interface IMetadata extends Partial<Document> {
+    policy_id: string,
     utxo: string,
     txid: string,
     amount_in_lovelace: string,
@@ -9,14 +10,13 @@ export interface MetadataInput {
     metadata_pathname?: string,
     hashed_token_name?: string,
     sender_address?: string,
+    createdAt: Date,
 };
 
-export interface MetadataDocument extends MetadataInput, mongoose.Document {
-    _id: string,
-    created_at: Date
-};
-
-const metadataSchema = new mongoose.Schema({
+const metadatasSchema = new Schema({
+    policy_id: {
+        type: String
+    },
     utxo:{
         type: String
     },
@@ -44,9 +44,8 @@ const metadataSchema = new mongoose.Schema({
         type: String
     },
     created_at: {
-        type: Date,
-        default: new Date()
+        type: Date
     }
 });
 
-export default mongoose.model<MetadataDocument>('Metadata', metadataSchema);
+export default model<IMetadata>('Metadatas', metadatasSchema);

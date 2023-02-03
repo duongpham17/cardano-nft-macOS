@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export default (() => {
+export const database = () => {
     
     try{
         const database: any = process.env.DATABASE;
@@ -17,4 +17,4 @@ export default (() => {
         console.log("Could not connect to database");
     }
 
-})();
+};

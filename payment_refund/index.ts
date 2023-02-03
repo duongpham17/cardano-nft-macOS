@@ -1,6 +1,6 @@
-import { CARDANO_CLI_PATH, CARDANO_NETWORK_TYPE } from '../variables';
-import { MetadataDocument } from '../_model/metadata';
-import { metadataFind, metadataUpdate } from '../_utils/controller';
+import { CARDANO_CLI, CARDANO_NETWORK_TYPE } from '../variables';
+import { IMetadata } from '../_model/metadata';
+import { metadataFind, metadataUpdate } from '../_controller';
 
 const cmd: any = require("node-cmd");
 
@@ -11,10 +11,10 @@ interface Refund {
     minimum_lovelace_fee: number
 }
 
-const buildRawTx = (data: MetadataDocument): void => {
+const buildRawTx = (data: IMetadata): void => {
     const {utxo, txid, sender_address} = data;
     cmd.runSync([
-        CARDANO_CLI_PATH,
+        CARDANO_CLI,
         "transaction build-raw",
         `--tx-in ${utxo}#${txid}`,
         `--tx-out ${sender_address}+0`,
@@ -25,7 +25,7 @@ const buildRawTx = (data: MetadataDocument): void => {
 
 const calcMinimumFee = (amount_in_lovelace: number | string): Refund => {
     const calculated_fee = cmd.runSync([
-        CARDANO_CLI_PATH,
+        CARDANO_CLI,
         "transaction calculate-min-fee",
         `--tx-body-file ${_account}/tx/tx.draft`,
         `--tx-in-count 1`,
@@ -45,11 +45,11 @@ const calcMinimumFee = (amount_in_lovelace: number | string): Refund => {
     }
 };
 
-const buildRealTx = (data: MetadataDocument, refund: Refund): void => {
+const buildRealTx = (data: IMetadata, refund: Refund): void => {
     const {utxo, txid, sender_address} = data;
     const {refund_amount, minimum_lovelace_fee} = refund;
     cmd.runSync([
-        CARDANO_CLI_PATH,
+        CARDANO_CLI,
         "transaction build-raw",
         `--tx-in ${utxo}#${txid}`,
         `--tx-out ${sender_address}+${refund_amount}`,
@@ -60,7 +60,7 @@ const buildRealTx = (data: MetadataDocument, refund: Refund): void => {
 
 const signTx = (): void => {
     cmd.runSync([
-        CARDANO_CLI_PATH,
+        CARDANO_CLI,
         "transaction sign",
         `--tx-body-file ${_account}/tx/tx.draft`,
         `--signing-key-file ${_account}/keys/payment.skey`,
@@ -74,7 +74,7 @@ const submitTx = async (): Promise<boolean> => {
     
     try{
         const response = await cmd.runSync([
-            CARDANO_CLI_PATH,
+            CARDANO_CLI,
             "transaction submit",
             `--tx-file ${_account}/tx/tx.signed`,
             `${CARDANO_NETWORK_TYPE}`
@@ -110,12 +110,14 @@ const refund_payments = async () => {
         if(!status) continue;
 
         data.status = "refunded";
+
         await metadataUpdate(data._id, data);
-        console.log(`${data.amount_in_lovelace} Refunded to, ${data.sender_address}`);
+
+        console.log("------------------------------------------------------------------------")
+        console.log(`> ${data.amount_in_lovelace} Refunded to, \n ${data.sender_address}`);
+        console.log("------------------------------------------------------------------------")
     }
 
 };
 
-setInterval(async () => {
-    await refund_payments();
-}, 15000);
+export const on_refund = () => setInterval(async () =>  await refund_payments(), 10000);

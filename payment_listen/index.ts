@@ -1,7 +1,7 @@
-import { CARDANO_CLI_PATH, CARDANO_NETWORK_TYPE, COST_OF_NFT, WALLET_ADDRESS, TOTAL_MINT, PROJECT_NAME} from '../variables';
-import { MetadataInput } from '../_model/metadata';
+import { CARDANO_CLI, CARDANO_NETWORK_TYPE, COST_OF_NFT, TOTAL_MINT, PROJECT_NAME, get_wallet_address, get_policy_id} from '../variables';
+import { IMetadata } from '../_model/metadata';
 import { blockfrost } from '../_utils/blockfrost';
-import { trackerFindAll, trackerUpdate, metadataCreate, metadataFindOne, metadataFindAll} from '../_utils/controller';
+import { metadataMintNumber, metadataCreate, metadataFindOne, metadataFindAll} from '../_controller';
 
 const cmd:any = require("node-cmd");
 
@@ -10,13 +10,21 @@ const isAmountCorrect = (amount: number | string): boolean => {
 };
 
 const getSenderAddress = async (utxo: string): Promise<string> => {
-    const response = await blockfrost.txsUtxos(utxo);
-    return response.inputs[0].address;
+    try{
+        const response = await blockfrost.txsUtxos(utxo);
+        return response.inputs[0].address;
+    } catch(_) {
+        console.log("Check blockfrost api, check if your using the correct api key for the environment")
+        return ""
+    }
 };
 
 const getUtxoTable = (): string[] => {
+
+    const WALLET_ADDRESS = get_wallet_address();
+
     const rawUtxoTable = cmd.runSync([
-        CARDANO_CLI_PATH,
+        CARDANO_CLI,
         "query utxo",
         CARDANO_NETWORK_TYPE,
         `--address ${WALLET_ADDRESS}`,
@@ -25,7 +33,7 @@ const getUtxoTable = (): string[] => {
     // Calculate total lovelace of the UTXO(s) inside the wallet address
     const utxoTableRows: string[] = rawUtxoTable.data.trim().split('\n').splice(2);
 
-    console.log("************************************************************************");
+    console.log("------------------------------------------------------------------------")
     console.log(new Date());
     console.log("utxo length", utxoTableRows.length);
 
@@ -40,7 +48,8 @@ interface MintTracker {
 }
 
 const nft_tracker = async (): Promise<MintTracker> => {
-    const { mint_number, _id } = await trackerFindAll();
+
+    const mint_number = await metadataMintNumber();
     
     const updated_mint_number = mint_number+1;
     const project_metadata_id = `${PROJECT_NAME}${updated_mint_number}`;
@@ -57,12 +66,12 @@ const nft_tracker = async (): Promise<MintTracker> => {
     
     const hashed_token_name = Buffer.from(project_metadata_id, 'utf8').toString('hex');
 
-    await trackerUpdate(_id, {mint_number: updated_mint_number});
-
     return {...data, hashed_token_name};
 }
 
-const listen_for_payment = async () => {
+const payments = async () => {
+
+    const policy_id = get_policy_id() as string
 
     const utxo_table = getUtxoTable();
 
@@ -80,12 +89,14 @@ const listen_for_payment = async () => {
 
         const sender_address: string = await getSenderAddress(utxo);
 
-        const data: MetadataInput = {
+        const data: IMetadata = {
+            policy_id,
             utxo,
             txid,
             sender_address,
             amount_in_lovelace,
             status: "refund",
+            createdAt: new Date()
         };
 
         if(!is_correct_amount) return await metadataCreate(data);
@@ -94,7 +105,7 @@ const listen_for_payment = async () => {
 
         if(is_max_mint) return await metadataCreate(data);
 
-        const data_correct: MetadataInput = {
+        const data_correct: IMetadata = {
             ...data,
             amount_in_ada: (Number(amount_in_lovelace) / 1000000).toFixed(6),
             metadata_pathname,
@@ -105,8 +116,6 @@ const listen_for_payment = async () => {
         await metadataCreate(data_correct);
 
     };
-
-    const tracker = await trackerFindAll();
 
     const metadata = await metadataFindAll();
 
@@ -120,10 +129,7 @@ const listen_for_payment = async () => {
         minted: 0
     });
 
-    console.log("total", total);
-    console.log("tracker mint number", tracker.mint_number);
+    console.log("Transactions", total);
 }
 
-setInterval(async () => {
-    await listen_for_payment();
-}, 15000);
+export const on_payments = () => setInterval(async () => await payments(), 10000);

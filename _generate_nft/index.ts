@@ -1,9 +1,10 @@
 import fs from 'fs';
 import axios from 'axios';
-import { PROJECT_NAME, TOTAL_MINT, POLICY_ID } from '../variables';
+import { PROJECT_NAME, TOTAL_MINT, get_policy_id } from '../variables';
 import { createCanvas, loadImage } from 'canvas';
 import { NFTStorage, Blob } from 'nft.storage';
 import { layers, width, height, Layer } from './layers';
+import { metadataDeleteAll } from '../_controller';
 
 /* Variables - Replace with your own project **************************/
 
@@ -64,11 +65,13 @@ const layerTracker = (layers: Layer[], layer_created: string[] ) => {
 
     const updated_tracker = updateTracker(tracker);
 
-    console.log("**********************************************");
+    console.log("------------------------------------------------------------------------")
     console.log(updated_tracker);
 };
 
 const addMetaData = (mint_number: number, nft_layers: string[], ipfs: string): void => {
+
+    const policy_id = get_policy_id() as string;
 
     const layer_name_order = layers.map((lay: Layer) => lay.name);
 
@@ -77,7 +80,7 @@ const addMetaData = (mint_number: number, nft_layers: string[], ipfs: string): v
     // check this website for the latest metadata tempalte, https://cips.cardano.org/cips/cip25/
     const metadata = {
         "721": {
-          [POLICY_ID]: {
+          [policy_id]: {
             [`${PROJECT_NAME}${mint_number}`]: {
                 name: `${PROJECT_NAME} #${mint_number}`,
                 ...attributes,
@@ -94,7 +97,7 @@ const addMetaData = (mint_number: number, nft_layers: string[], ipfs: string): v
 
     layerTracker(layers, nft_layers);
 
-    console.log("**********************************************");
+    console.log("------------------------------------------------------------------------")
     const total = totalMetadata();
     console.log(`Total NFT created: ${total}`);
 };
@@ -137,19 +140,26 @@ const drawLayer = async (): Promise<void> => {
         }
     };
 
-    console.log("**********************************************");
+    console.log("------------------------------------------------------------------------")
     console.log(`Layer created: ${nft_layers}`);
-    console.log("**********************************************");
+    console.log("------------------------------------------------------------------------")
 };
 
 export const mintImagesAndMetadata = async (): Promise<void> => {
+
+    const isTrackerJSonFileExist = fs.existsSync(`${__dirname}/../_nft/tracker.json`);
+    if(!isTrackerJSonFileExist) fs.writeFileSync(`${__dirname}/../_nft/tracker.json`, JSON.stringify({}));
+
+    const isMetadataFolderExist = fs.existsSync(`${__dirname}/../_nft/metadata`);
+    if(!isMetadataFolderExist) fs.mkdirSync(`${__dirname}/../_nft/metadata`, { recursive: true});
+
+    const isNftExist = fs.existsSync(`${__dirname}/../_nft/nft`);
+    if(!isNftExist) fs.mkdirSync(`${__dirname}/../_nft/nft`, { recursive: true});
+
     const is_max_mint = totalMetadata() === TOTAL_MINT;
     if(is_max_mint) return;
     for(let i = 0; i <= TOTAL_MINT; i++) await drawLayer();
-};
- 
-export const clearTracker = (): void => {
-    fs.writeFileSync(`${__dirname}/../_nft/tracker.json`, JSON.stringify({}));
+    
 };
 
 export const cleanNftStorage = async (): Promise<void> => {
@@ -171,10 +181,30 @@ export const cleanNftStorage = async (): Promise<void> => {
             await api.delete(`/${i.cid}`);
             accumulator++;
     
-            console.log(`***************************************************************`)
+            console.log("------------------------------------------------------------------------")
             console.log('deleted', i.cid)
             console.log(accumulator, "/", storage.length);
         }
     }, 30000);
 
-}
+};
+
+/* 
+
+    If you plan on deleting and restarting, make sure to run this function first then generate new payment policy keys
+
+*/
+export const clearAllNftsAndMetadata = async () => {
+    const policy_id = get_policy_id();
+    fs.rmSync(`${__dirname}/../_nft/tracker.json`, { recursive: true, force: true })
+    fs.rmSync(`${__dirname}/../_nft/nft`, { recursive: true, force: true })
+    fs.rmSync(`${__dirname}/../_nft/metadata`, { recursive: true, force: true });
+
+    try{
+        await metadataDeleteAll(policy_id);
+    } catch(err){
+        console.log("Database is not connected, nothing has been deleted from the database");
+    }
+    
+    console.log("Deleted all nfts and metadata files and database, successful")
+};

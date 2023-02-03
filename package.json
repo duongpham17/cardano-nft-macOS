@@ -2,7 +2,9 @@
   "main": "./index.ts",
   "scripts": {
     "dev": "nodemon ./index.ts",
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "keys": "npx ts-node ./_account/keys.ts",
+    "policy": "npx ts-node ./_account/policy.ts"
   },
   "dependencies": {
     "@blockfrost/blockfrost-js": "^5.2.0",
