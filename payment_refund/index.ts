@@ -12,12 +12,12 @@ interface Refund {
 }
 
 const buildRawTx = (data: IMetadata): void => {
-    const {utxo, txid, sender_address} = data;
+    const {utxo, txid, sender_address, batched_tokens} = data;
     cmd.runSync([
         CARDANO_CLI,
         "transaction build-raw",
         `--tx-in ${utxo}#${txid}`,
-        `--tx-out ${sender_address}+0`,
+        `--tx-out ${sender_address}+0${batched_tokens}`,
         `--fee 0`,
         `--out-file ${_account}/tx/tx.draft`
     ].join(" "));
@@ -46,13 +46,13 @@ const calcMinimumFee = (amount_in_lovelace: number | string): Refund => {
 };
 
 const buildRealTx = (data: IMetadata, refund: Refund): void => {
-    const {utxo, txid, sender_address} = data;
+    const {utxo, txid, sender_address, batched_tokens} = data;
     const {refund_amount, minimum_lovelace_fee} = refund;
     cmd.runSync([
         CARDANO_CLI,
         "transaction build-raw",
         `--tx-in ${utxo}#${txid}`,
-        `--tx-out ${sender_address}+${refund_amount}`,
+        `--tx-out ${sender_address}+${refund_amount}${batched_tokens}`,
         `--fee ${Number(minimum_lovelace_fee)}`,
         `--out-file ${_account}/tx/tx.draft`
     ].join(" "));

@@ -10,6 +10,12 @@ export const metadataFind = async (status: string[]): Promise<IMetadata[]> => {
     return metadata
 };
 
+export const metadataFindUtxo = async (utxo: string): Promise<IMetadata | null> => {
+    const metadata = await Metadatas.findOne({utxo});
+    return metadata
+};
+
+
 export const metadataFindOne = async (utxo: string, status: string[]): Promise<IMetadata | null> => {
     const metadata = await Metadatas.findOne({utxo, status});
     return metadata;

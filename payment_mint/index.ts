@@ -1,28 +1,12 @@
-import { CARDANO_CLI, CARDANO_ERA, SEND_CHANGE_TO_ADDRESS, CARDANO_NETWORK_TYPE, get_policy_id, get_slot_number} from '../variables';
+import { CARDANO_CLI, CARDANO_ERA, SEND_CHANGE_TO_ADDRESS, CARDANO_NETWORK_TYPE, get_policy_id, get_slot_number, get_wallet_address} from '../variables';
 import { IMetadata } from '../_model/metadata';
 import { metadataFind, metadataUpdate } from '../_controller';
 
 const cmd: any = require("node-cmd");
 const _account = './_account';
 
-const buildRawTx = (data: IMetadata): void => {
-
-  const [slot_number, policy_id] = [get_slot_number(), get_policy_id() ];
-
-  const {utxo, txid, sender_address, hashed_token_name} = data;
-
-  cmd.runSync([
-    CARDANO_CLI,
-    "transaction build-raw",
-    `--tx-in ${utxo}#${txid}`,
-    `--tx-out ${sender_address}+0+"1 ${policy_id}.${hashed_token_name}"`,
-    `--fee 0`,
-    `--invalid-hereafter ${slot_number}`,
-    `--out-file ${_account}/tx/matx.raw`
-  ].join(" "));
-};
-
 const calcMinimumFee = (): number => {
+
   const calculated_min_fee = cmd.runSync([
     CARDANO_CLI,
     "transaction calculate-min-fee",
@@ -43,17 +27,34 @@ const calcMinimumFee = (): number => {
   return minimum_lovelace;
 };
 
+const buildRawTx = (data: IMetadata): void => {
+
+  const [slot_number, policy_id] = [get_slot_number(), get_policy_id()];
+
+  const {utxo, txid, sender_address, hashed_token_name, batched_tokens} = data;
+
+  cmd.runSync([
+    CARDANO_CLI,
+    "transaction build-raw",
+    `--tx-in ${utxo}#${txid}`,
+    `--tx-out ${sender_address}+0+"1 ${policy_id}.${hashed_token_name}"${batched_tokens}`,
+    `--fee 0`,
+    `--invalid-hereafter ${slot_number}`,
+    `--out-file ${_account}/tx/matx.raw`
+  ].join(" "));
+};
+
 const buildRealTx = (data: IMetadata, minimum_lovelace: number): void => {
   const [slot_number, policy_id] = [get_slot_number(), get_policy_id() ];
 
-  const {utxo, txid, sender_address, hashed_token_name, metadata_pathname} = data;
+  const {utxo, txid, sender_address, hashed_token_name, metadata_pathname, batched_tokens} = data;
 
   cmd.runSync([
     `${CARDANO_CLI} transaction build`,
     CARDANO_NETWORK_TYPE,
     CARDANO_ERA,
     `--tx-in ${utxo}#${txid}`,
-    `--tx-out ${sender_address}+${minimum_lovelace}+"1 ${policy_id}.${hashed_token_name}"`,
+    `--tx-out ${sender_address}+${minimum_lovelace}+"1 ${policy_id}.${hashed_token_name}"${batched_tokens}`,
     `--change-address ${SEND_CHANGE_TO_ADDRESS}`,
     `--mint="1 ${policy_id}.${hashed_token_name}"`,
     `--minting-script-file ${_account}/policy/policy.script`,

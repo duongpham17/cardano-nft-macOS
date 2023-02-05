@@ -17,16 +17,17 @@ import { on_refund }   from './payment_refund'; // Run after setup has been invo
 /* 
     ! IMPORTANT ! Once the above is created. You must generate your own nfts by running mintImagesAndMetadata()
     Make sure to comment everytning else out while your generating the nfts
-
     You can see the nfts metadata get minted by going to _nft/metadata and _/nft/nft
+
+    npm run dev
 */
 
 // mintImagesAndMetadata()
 
-// database();
+database();
 
-// on_payments();
+on_payments();
 
-// on_mint_nft();
+on_mint_nft();
 
-// on_refund();
+on_refund();

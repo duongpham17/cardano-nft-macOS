@@ -4,8 +4,9 @@ export interface IMetadata extends Partial<Document> {
     policy_id: string,
     utxo: string,
     txid: string,
+    batched_tokens: string,
     amount_in_lovelace: string,
-    status: "pending" | "refund" | "refunded" | "correct_amount" | "minted",
+    status: "pending" | "refund" | "refunded" | "correct_amount" | "minted" | "gift",
     amount_in_ada?: string,
     metadata_pathname?: string,
     hashed_token_name?: string,
@@ -23,12 +24,15 @@ const metadatasSchema = new Schema({
     txid: {
         type: String
     },
+    batched_tokens:{
+        type: String
+    },
     amount_in_lovelace: {
         type: String
     },
     status:{
         type: String,
-        enum: ["pending", "refund", "refunded", "correct_amount", "minted"],
+        enum: ["pending", "refund", "refunded", "correct_amount", "minted", "gift"],
         default: "pending"
     },
     amount_in_ada:{

@@ -1,7 +1,7 @@
 import { CARDANO_CLI, CARDANO_NETWORK_TYPE, COST_OF_NFT, TOTAL_MINT, PROJECT_NAME, get_wallet_address, get_policy_id} from '../variables';
 import { IMetadata } from '../_model/metadata';
 import { blockfrost } from '../_utils/blockfrost';
-import { metadataMintNumber, metadataCreate, metadataFindOne, metadataFindAll} from '../_controller';
+import { metadataMintNumber, metadataCreate, metadataFindAll, metadataFind, metadataFindUtxo} from '../_controller';
 
 const cmd:any = require("node-cmd");
 
@@ -19,9 +19,11 @@ const getSenderAddress = async (utxo: string): Promise<string> => {
     }
 };
 
-const getUtxoTable = (): string[] => {
+const getUtxoTable = async(): Promise<string[]> => {
 
     const WALLET_ADDRESS = get_wallet_address();
+
+    const gifted = await metadataFind(["gift"]);
 
     const rawUtxoTable = cmd.runSync([
         CARDANO_CLI,
@@ -30,14 +32,26 @@ const getUtxoTable = (): string[] => {
         `--address ${WALLET_ADDRESS}`,
     ].join(" "));
     
-    // Calculate total lovelace of the UTXO(s) inside the wallet address
     const utxoTableRows: string[] = rawUtxoTable.data.trim().split('\n').splice(2);
+
+    const gifted_ids = gifted.map(el => el.utxo);
+
+    const utxos: string[] = [];
+
+    if(gifted_ids.length){
+        for(let x of utxoTableRows){
+            for(let i of gifted_ids){
+            const exist = x.includes(i);
+            if(!exist) utxos.push(x)
+            }
+        };
+    }
 
     console.log("------------------------------------------------------------------------")
     console.log(new Date());
-    console.log("utxo length", utxoTableRows.length);
+    console.log("utxo length", utxos.length);
 
-    return utxoTableRows;
+    return !utxos.length ? utxoTableRows : utxos;
 };
 
 interface MintTracker {
@@ -70,22 +84,22 @@ const nft_tracker = async (): Promise<MintTracker> => {
 }
 
 const payments = async () => {
+    const policy_id = get_policy_id() as string;
 
-    const policy_id = get_policy_id() as string
-
-    const utxo_table = getUtxoTable();
+    const utxo_table = await getUtxoTable();
 
     const max_iteration: number = utxo_table.length >= 100 ? 100 : utxo_table.length;
 
     for (let i = 0; i < max_iteration; i++) {
 
         const [utxo, txid, amount_in_lovelace] = utxo_table[i].split(" ").filter((s: string) => s);
+        
+        const config_tokens = utxo_table[i].split(" ").filter(s => s).slice(5, -1).filter(s => s !== "+");
+        const batch_tokens_for_output = config_tokens.map((el: any, index: number, items: string[]) => index % 2 === 0 ? `+"${el} ${items[index+1]}"` : "").filter((s: any) => s).join("")
+        
+        const is_metadata_pending = await metadataFindUtxo(utxo)
 
-        const is_metadata_processed = await metadataFindOne(utxo, ["refund", "refunded", "correct_amount", "minted"])
-
-        if(is_metadata_processed) continue;
-
-        const is_correct_amount = isAmountCorrect(amount_in_lovelace);
+        if(is_metadata_pending) continue;
 
         const sender_address: string = await getSenderAddress(utxo);
 
@@ -96,13 +110,17 @@ const payments = async () => {
             sender_address,
             amount_in_lovelace,
             status: "refund",
-            createdAt: new Date()
+            createdAt: new Date(),
+            batched_tokens: batch_tokens_for_output
         };
 
+        const is_under_lovelace_required_for_a_refund = 5000000 >= Number(amount_in_lovelace);
+        if(is_under_lovelace_required_for_a_refund) return await metadataCreate({...data, status: "gift"});
+
+        const is_correct_amount = isAmountCorrect(amount_in_lovelace);
         if(!is_correct_amount) return await metadataCreate(data);
 
         const {metadata_pathname, is_max_mint, hashed_token_name} = await nft_tracker();
-
         if(is_max_mint) return await metadataCreate(data);
 
         const data_correct: IMetadata = {
@@ -126,7 +144,8 @@ const payments = async () => {
         refund: 0,
         refunded: 0,
         correct_amount: 0,
-        minted: 0
+        minted: 0,
+        gift: 0
     });
 
     console.log("Transactions", total);
