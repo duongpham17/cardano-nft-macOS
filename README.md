@@ -1,4 +1,5 @@
 # IMPORTANT 
+This is for macOS only.
 
 Install the required modules first.
 ```
